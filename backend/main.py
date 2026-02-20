@@ -1,5 +1,12 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI
 import uvicorn
+from app.routes.upload import router as upload_router
+
+
 
 app = FastAPI()
 
@@ -10,6 +17,9 @@ async def root():
         "version": "1.0.0",
         "docs_url": "/docs",
     }
+
+app.include_router(upload_router)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
