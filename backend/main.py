@@ -5,7 +5,7 @@ load_dotenv()
 from fastapi import FastAPI
 import uvicorn
 from app.routes.upload import router as upload_router
-
+from app.routes.chat import router as chat_router
 
 
 app = FastAPI()
@@ -19,7 +19,7 @@ async def root():
     }
 
 app.include_router(upload_router)
-
+app.include_router(chat_router)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
