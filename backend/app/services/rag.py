@@ -25,15 +25,18 @@ CONTEXT:
 """
 
 
-def retrieve_chunks(query: str, top_k: int = 5) -> list[dict]:
-    """Embed query and fetch similar chunks from Supabase."""
+def retrieve_chunks(query: str, top_k: int = 5, filename: str | None = None) -> list[dict]:
+    """Embed query and fetch similar chunks from Supabase. Optionally filter by filename."""
     embeddings = get_embeddings()
     supabase = get_supabase()
     query_vector = embeddings.embed_query(query)
-    result = supabase.rpc("match_documents", {
+    params: dict = {
         "query_embedding": query_vector,
         "match_count": top_k,
-    }).execute()
+    }
+    if filename is not None:
+        params["filter_filename"] = filename
+    result = supabase.rpc("match_documents", params).execute()
     return result.data or []
 
 
@@ -48,12 +51,13 @@ def build_context(chunks: list[dict]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-def ask(query: str, top_k: int = 5) -> tuple[str, list[dict]]:
+def ask(query: str, top_k: int = 5, filename: str | None = None) -> tuple[str, list[dict]]:
     """
     RAG pipeline: retrieve similar chunks, then generate answer with LLM.
+    If filename is provided, only chunks from that document are used.
     Returns (answer_text, chunks) for sources.
     """
-    chunks = retrieve_chunks(query, top_k)
+    chunks = retrieve_chunks(query, top_k, filename=filename)
     if not chunks:
         return "No relevant documents found. Please upload documents first.", []
 
