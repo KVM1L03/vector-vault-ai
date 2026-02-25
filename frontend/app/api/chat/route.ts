@@ -5,13 +5,13 @@ const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8000";
 
 /**
  * Proxies to FastAPI POST /api/v1/ask
- * Request: { query: string, top_k?: number }
+ * Request: { query: string, top_k?: number, filename?: string, include_full_content?: boolean }
  * Response: { answer: string, sources?: Array<{ id, content, filename, chunk_index, page? }> }
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { query, top_k = 5 } = body;
+    const { query, top_k = 5, filename, include_full_content } = body;
 
     if (!query || typeof query !== "string" || !query.trim()) {
       return Response.json(
@@ -20,9 +20,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const payload: Record<string, unknown> = {
+      query: query.trim(),
+      top_k,
+    };
+    if (filename != null) payload.filename = filename;
+    if (include_full_content != null) payload.include_full_content = include_full_content;
+
     const { data } = await axios.post<{ answer: string }>(
       `${API_BASE_URL}/api/v1/ask`,
-      { query: query.trim(), top_k },
+      payload,
       {
         headers: { "Content-Type": "application/json" },
         timeout: 60000,

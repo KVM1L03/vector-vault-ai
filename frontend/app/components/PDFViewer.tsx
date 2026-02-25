@@ -131,7 +131,7 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
   if (loading) {
     return (
       <div className={`flex items-center justify-center ${className}`}>
-        <p className="text-gray-500">Loading PDF...</p>
+        <p className="text-stone-500">Loading PDF...</p>
       </div>
     );
   }
@@ -151,18 +151,18 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
           type="button"
           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
           disabled={currentPage <= 1}
-          className="rounded border border-gray-200 px-2 py-1 text-sm disabled:opacity-50"
+          className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
         >
           Prev
         </button>
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-stone-600">
           Page {currentPage} / {numPages}
         </span>
         <button
           type="button"
           onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
           disabled={currentPage >= numPages}
-          className="rounded border border-gray-200 px-2 py-1 text-sm disabled:opacity-50"
+          className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
         >
           Next
         </button>

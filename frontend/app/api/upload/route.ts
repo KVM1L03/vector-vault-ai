@@ -4,6 +4,7 @@ const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8000";
 
 /**
  * Proxies PDF upload to FastAPI POST /api/v1/upload
+ * Backend returns { filename, chunks_count, message } – response is passed through.
  */
 export async function POST(req: NextRequest) {
   try {
