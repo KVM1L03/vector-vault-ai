@@ -1,3 +1,5 @@
+import asyncio
+from typing import AsyncGenerator
 from app.core.clients import get_embeddings, get_llm, get_supabase
 
 RAG_SYSTEM_PROMPT = """You are an intelligent document Q&A assistant.
@@ -12,7 +14,7 @@ FORMATTING (IMPORTANT):
 1. Mathematical formulas and equations ALWAYS use LaTeX:
    - Inline formulas: single dollar signs: $E = mc^2$
    - Block formulas on a new line: double dollar signs.
-   Example: $$P_g = \\frac{{H}}{{10}} + 0.3$$
+   Example: $$P_g = \frac{{H}}{{10}} + 0.3$$
 2. Use Markdown for bold key values.
 
 RESPONSE REQUIREMENTS:
@@ -24,48 +26,56 @@ CONTEXT:
 {context}
 """
 
-
-def retrieve_chunks(query: str, top_k: int = 5, filename: str | None = None) -> list[dict]:
-    """Embed query and fetch similar chunks from Supabase. Optionally filter by filename."""
+async def get_relevant_chunks(query: str, top_k: int = 5, filename: str | None = None) -> list[dict]:
+    """Asynchroniczne pobieranie wektorów z pgvector."""
     embeddings = get_embeddings()
     supabase = get_supabase()
-    query_vector = embeddings.embed_query(query)
+    
+    query_vector = await embeddings.aembed_query(query)
+    
     params: dict = {
         "query_embedding": query_vector,
         "match_count": top_k,
     }
     if filename is not None:
         params["filter_filename"] = filename
-    result = supabase.rpc("match_documents", params).execute()
+        
+
+    def fetch_from_supabase():
+        return supabase.rpc("match_documents", params).execute()
+        
+    result = await asyncio.to_thread(fetch_from_supabase)
     return result.data or []
 
 
 def build_context(chunks: list[dict]) -> str:
-    """Format retrieved chunks as context string."""
+    """Format retrieved chunks as context string. (Zostaje synchroniczne - to tylko operacje na CPU)"""
     parts = []
     for i, row in enumerate(chunks, 1):
         content = row.get("content", "")
         metadata = row.get("metadata", {}) or {}
-        filename = metadata.get("filename", "unknown")
-        parts.append(f"[Fragment {i}] (from {filename})\n{content}")
+        filename_meta = metadata.get("filename", "unknown")
+        parts.append(f"[Fragment {i}] (from {filename_meta})\n{content}")
     return "\n\n---\n\n".join(parts)
 
 
-def ask(query: str, top_k: int = 5, filename: str | None = None) -> tuple[str, list[dict]]:
-    """
-    RAG pipeline: retrieve similar chunks, then generate answer with LLM.
-    If filename is provided, only chunks from that document are used.
-    Returns (answer_text, chunks) for sources.
-    """
-    chunks = retrieve_chunks(query, top_k, filename=filename)
+async def stream_llm_response(query: str, chunks: list[dict]) -> AsyncGenerator[str, None]:
+    """Asynchroniczny generator strumieniujący tokeny z LLM."""
     if not chunks:
-        return "No relevant documents found. Please upload documents first.", []
+        yield "No relevant documents found. Please upload documents first."
+        return
 
     context = build_context(chunks)
     prompt = RAG_SYSTEM_PROMPT.format(context=context)
     llm = get_llm()
-    response = llm.invoke([
+    
+    messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": query},
-    ])
-    return response.content, chunks
+    ]
+
+    async for chunk in llm.astream(messages):
+        if hasattr(chunk, "content") and chunk.content:
+            yield chunk.content
+        elif isinstance(chunk, str):
+            yield chunk
