@@ -1,83 +1,80 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { FileUp, ExternalLink } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FileUp, Square } from "lucide-react";
 import dynamic from "next/dynamic";
+import { ChatMessage } from "./components/ChatMessage";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import type { UIMessage } from "ai";
 import type { PDFViewerHandle } from "./components/PDFViewer";
 
 const PDFViewer = dynamic(() => import("./components/PDFViewer"), { ssr: false });
 
-type Source = {
-  id: string;
-  content: string;
-  filename: string;
-  chunk_index: number;
-  page?: number;
-};
-
-type Message =
-  | { role: "user"; content: string }
-  | { role: "assistant"; content: string; sources?: Source[] };
+function getTextFromMessage(msg: UIMessage): string {
+  return (msg.parts ?? [])
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join("");
+}
 
 export default function ChatWithPDFPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [activeFilename, setActiveFilename] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const pdfViewerRef = useRef<PDFViewerHandle>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        prepareSendMessagesRequest: ({ messages: msgs, body }) => {
+          const lastUser = [...msgs].reverse().find((m) => m.role === "user");
+          const query = lastUser ? getTextFromMessage(lastUser) : "";
+          const b = body as Record<string, unknown> | undefined;
+          return {
+            body: {
+              query,
+              top_k: 5,
+              filename: b?.filename ?? null,
+              include_full_content: b?.include_full_content ?? true,
+            },
+          };
+        },
+      }),
+    []
+  );
+
+  const { messages, sendMessage, status, stop, error: chatError } = useChat({
+    transport,
+    onError: (err) => setError(err.message),
+  });
+
+  const isLoading = status === "streaming" || status === "submitted";
 
   const handleSubmit = useCallback(
-    async (e?: React.FormEvent) => {
+    (e?: React.FormEvent) => {
       e?.preventDefault();
       const trimmed = input.trim();
-      if (!trimmed || loading) return;
+      if (!trimmed || isLoading) return;
       if (!uploadedFile || !activeFilename) {
         setError("Upload a PDF first.");
         return;
       }
-
-      setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
-      setInput("");
-      setLoading(true);
       setError(null);
-
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: trimmed,
-            top_k: 5,
-            filename: activeFilename,
-            include_full_content: true,
-          }),
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error ?? "Request failed");
-        }
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: data.answer ?? "",
-            sources: data.sources ?? [],
-          },
-        ]);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Request failed");
-      } finally {
-        setLoading(false);
-      }
+      setInput("");
+      sendMessage(
+        { text: trimmed },
+        { body: { filename: activeFilename, include_full_content: true } }
+      );
     },
-    [input, loading, uploadedFile, activeFilename]
+    [input, isLoading, uploadedFile, activeFilename, sendMessage]
   );
 
   const uploadFile = useCallback(async (file: File) => {
@@ -134,9 +131,6 @@ export default function ChatWithPDFPage() {
     setIsDragging(false);
   }, []);
 
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  const pdfViewerRef = useRef<PDFViewerHandle>(null);
-
   useEffect(() => {
     if (uploadedFile) {
       const url = URL.createObjectURL(uploadedFile);
@@ -145,6 +139,12 @@ export default function ChatWithPDFPage() {
     }
     setPdfPreviewUrl(null);
   }, [uploadedFile]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const displayError = error ?? (chatError?.message ?? null);
 
   return (
     <div className="flex h-screen w-full bg-stone-50 font-sans text-stone-800">
@@ -234,52 +234,16 @@ export default function ChatWithPDFPage() {
               </div>
             )}
             <div className="flex flex-col gap-4">
-              {messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
-                      msg.role === "user"
-                        ? "bg-orange-50 text-orange-900 border border-orange-100"
-                        : "bg-stone-100 text-stone-800 border border-stone-100"
-                    }`}
-                  >
-                    {msg.role === "assistant" ? (
-                      <div className="space-y-2">
-                        <div className="text-sm [&_p]:my-1.5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_strong]:font-semibold [&_code]:rounded [&_code]:bg-stone-200 [&_code]:px-1 [&_code]:text-xs [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-stone-200 [&_pre]:p-2 [&_pre]:text-xs [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm [&_h1,_h2,_h3]:font-semibold [&_h1,_h2,_h3]:mt-2">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        </div>
-                        {msg.sources && msg.sources.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {msg.sources.map((src) => (
-                              <button
-                                key={src.id}
-                                type="button"
-                                onClick={() =>
-                                  pdfViewerRef.current?.goToSource({
-                                    page: src.page,
-                                    content: src.content,
-                                  })
-                                }
-                                className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-medium text-orange-800 shadow-sm transition-colors hover:bg-orange-50 hover:border-orange-300"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                {src.filename}
-                                {src.chunk_index >= 0 && ` #${src.chunk_index + 1}`}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
-                    )}
-                  </div>
-                </div>
+              {messages.map((msg) => (
+                <ChatMessage
+                  key={msg.id}
+                  message={msg}
+                  onSourceClick={(source) =>
+                    pdfViewerRef.current?.goToSource(source)
+                  }
+                />
               ))}
-              {loading && (
+              {isLoading && (
                 <div className="flex justify-start">
                   <div className="flex items-center gap-1.5 rounded-2xl bg-orange-50 border border-orange-100 px-4 py-2">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
@@ -289,11 +253,12 @@ export default function ChatWithPDFPage() {
                 </div>
               )}
             </div>
+            <div ref={messagesEndRef} />
           </div>
 
-          {error && (
+          {displayError && (
             <div className="border-t border-red-200 bg-red-50 px-6 py-3 text-sm text-red-700">
-              {error}
+              {displayError}
             </div>
           )}
 
@@ -310,16 +275,27 @@ export default function ChatWithPDFPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about your PDF..."
-                disabled={loading}
+                disabled={isLoading}
                 className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-stone-800 placeholder-stone-400 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/25 disabled:opacity-60"
               />
-              <button
-                type="submit"
-                disabled={loading || !input.trim() || !uploadedFile || !activeFilename}
-                className="rounded-xl bg-orange-500 px-6 py-3 font-medium text-white shadow-md transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-orange-500"
-              >
-                Send
-              </button>
+              {isLoading ? (
+                <button
+                  type="button"
+                  onClick={() => stop()}
+                  className="flex items-center gap-2 rounded-xl border border-orange-300 bg-white px-6 py-3 font-medium text-orange-700 shadow-sm transition-colors hover:bg-orange-50"
+                >
+                  <Square className="h-4 w-4" />
+                  Stop
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!input.trim() || !uploadedFile || !activeFilename}
+                  className="rounded-xl bg-orange-500 px-6 py-3 font-medium text-white shadow-md transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-orange-500"
+                >
+                  Send
+                </button>
+              )}
             </form>
           </div>
         </div>
