@@ -1,14 +1,36 @@
+import os
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from fastapi import FastAPI
 import uvicorn
+
+from app.core.clients import get_redis, close_redis
 from app.routes.upload import router as upload_router
 from app.routes.chat import router as chat_router
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        r = get_redis()
+        await r.ping()
+        print("Successfully connected to Redis!")
+    except Exception as e:
+        print(f"Warning: Could not connect to Redis: {e}")
+
+    yield
+
+    await close_redis()
+    print("Closed Redis connection.")
+
+app = FastAPI(
+    title="Vector Vault AI",
+    version="1.0.0",
+    lifespan=lifespan  
+)
 
 @app.get("/")
 async def root():

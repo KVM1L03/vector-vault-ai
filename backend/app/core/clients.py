@@ -5,11 +5,14 @@ import os
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from supabase import create_client
+import redis.asyncio as redis
+
 
 _embeddings: OpenAIEmbeddings | None = None
 _supabase = None
 _llm: ChatOpenAI | None = None
 _splitter: RecursiveCharacterTextSplitter | None = None
+_redis = None
 
 
 def get_embeddings() -> OpenAIEmbeddings:
@@ -41,3 +44,17 @@ def get_splitter() -> RecursiveCharacterTextSplitter:
     if _splitter is None:
         _splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     return _splitter
+
+
+def get_redis():
+    global _redis
+    if _redis is None:
+        url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        _redis = redis.from_url(url, decode_responses=True)
+    return _redis
+
+async def close_redis():
+    global _redis
+    if _redis:
+        await _redis.aclose()
+        _redis = None
