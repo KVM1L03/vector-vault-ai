@@ -24,6 +24,7 @@ Create a `.env` file in the `backend` directory with these variables:
 - `OPENAI_API_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_KEY`
+- `REDIS_URL` (optional, defaults to `redis://localhost:6379/0`)
 
 Run the server:
 
@@ -36,11 +37,11 @@ Docs: http://localhost:8000/docs
 
 ---
 
-## 2. File structure
+## 2. File structure (feature-based)
 
 ```
 backend/
-├── main.py                 # FastAPI app, router setup
+├── main.py
 ├── requirements.txt
 ├── .env                    # (not in repo) environment variables
 ├── .gitignore
@@ -48,17 +49,21 @@ backend/
 └── app/
     ├── core/
     │   ├── __init__.py
-    │   └── clients.py      # embeddings, Supabase, LLM, text splitter
+    │   ├── cache.py        # Redis cache for chat responses
+    │   └── clients.py      # embeddings, Supabase, LLM, text splitter, Redis
     │
-    ├── routes/
-    │   ├── upload.py       # POST /api/v1/upload — PDF upload
-    │   └── chat.py         # POST /api/v1/ask — RAG chat
+    ├── chat/
+    │   ├── __init__.py
+    │   ├── schemas.py      # QuestionRequest, SourceItem, QuestionResponse
+    │   ├── services.py     # stream_chat_response, build_sources
+    │   └── routes.py       # POST /api/v1/ask — RAG chat (streaming)
     │
-    ├── schemas/
-    │   ├── upload.py       # ChunkMetadata, UploadResponse
-    │   └── chat.py         # QuestionRequest, QuestionResponse
+    ├── upload/
+    │   ├── __init__.py
+    │   ├── schemas.py      # ChunkMetadata, UploadResponse
+    │   ├── services.py     # process_document, PDF parsing, chunking → Supabase
+    │   └── routes.py       # POST /api/v1/upload — PDF upload
     │
     └── services/
-        ├── document_processor.py   # PDF parsing, chunking, embedding → Supabase
-        └── rag.py                  # retrieve, build context, LLM answer
+        └── rag.py         # get_relevant_chunks, stream_llm_response (shared)
 ```

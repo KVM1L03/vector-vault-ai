@@ -1,7 +1,7 @@
 import pymupdf
 
 from app.core.clients import get_embeddings, get_splitter, get_supabase
-from app.schemas.upload import ChunkMetadata, UploadResponse
+from app.upload.schemas import ChunkMetadata, UploadResponse
 
 
 def extract_text_from_pdf(contents: bytes) -> str:

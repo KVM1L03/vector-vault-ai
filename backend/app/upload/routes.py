@@ -2,8 +2,8 @@ import asyncio
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.schemas.upload import UploadResponse
-from app.services.document_processor import process_document
+from app.upload.schemas import UploadResponse
+from app.upload.services import process_document
 
 router = APIRouter(prefix="/api/v1", tags=["upload"])
 

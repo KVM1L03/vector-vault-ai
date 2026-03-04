@@ -1,3 +1,17 @@
-from app.core.clients import get_embeddings, get_llm, get_splitter, get_supabase
+from app.core.clients import (
+    close_redis,
+    get_embeddings,
+    get_llm,
+    get_redis,
+    get_splitter,
+    get_supabase,
+)
 
-__all__ = ["get_embeddings", "get_supabase", "get_llm", "get_splitter"]
+__all__ = [
+    "close_redis",
+    "get_embeddings",
+    "get_llm",
+    "get_redis",
+    "get_splitter",
+    "get_supabase",
+]

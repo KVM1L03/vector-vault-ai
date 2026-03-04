@@ -8,53 +8,54 @@ from supabase import create_client
 import redis.asyncio as redis
 
 
-_embeddings: OpenAIEmbeddings | None = None
-_supabase = None
-_llm: ChatOpenAI | None = None
-_splitter: RecursiveCharacterTextSplitter | None = None
-_redis = None
+embeddings_cache: OpenAIEmbeddings | None = None
+supabase_client = None
+llm_client: ChatOpenAI | None = None
+splitter_instance: RecursiveCharacterTextSplitter | None = None
+redis_client = None
 
 
 def get_embeddings() -> OpenAIEmbeddings:
-    global _embeddings
-    if _embeddings is None:
-        _embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-    return _embeddings
+    global embeddings_cache
+    if embeddings_cache is None:
+        embeddings_cache = OpenAIEmbeddings(model="text-embedding-3-small")
+    return embeddings_cache
 
 
 def get_supabase():
-    global _supabase
-    if _supabase is None:
-        _supabase = create_client(
+    global supabase_client
+    if supabase_client is None:
+        supabase_client = create_client(
             os.getenv("SUPABASE_URL"),
             os.getenv("SUPABASE_SERVICE_KEY"),
         )
-    return _supabase
+    return supabase_client
 
 
 def get_llm() -> ChatOpenAI:
-    global _llm
-    if _llm is None:
-        _llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    return _llm
+    global llm_client
+    if llm_client is None:
+        llm_client = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    return llm_client
 
 
 def get_splitter() -> RecursiveCharacterTextSplitter:
-    global _splitter
-    if _splitter is None:
-        _splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    return _splitter
+    global splitter_instance
+    if splitter_instance is None:
+        splitter_instance = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    return splitter_instance
 
 
 def get_redis():
-    global _redis
-    if _redis is None:
+    global redis_client
+    if redis_client is None:
         url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        _redis = redis.from_url(url, decode_responses=True)
-    return _redis
+        redis_client = redis.from_url(url, decode_responses=True)
+    return redis_client
+
 
 async def close_redis():
-    global _redis
-    if _redis:
-        await _redis.aclose()
-        _redis = None
+    global redis_client
+    if redis_client:
+        await redis_client.aclose()
+        redis_client = None

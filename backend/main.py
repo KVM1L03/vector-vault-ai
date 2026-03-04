@@ -7,9 +7,9 @@ load_dotenv()
 from fastapi import FastAPI
 import uvicorn
 
-from app.core.clients import get_redis, close_redis
-from app.routes.upload import router as upload_router
-from app.routes.chat import router as chat_router
+from app.core.clients import close_redis, get_redis
+from app.chat.routes import router as chat_router
+from app.upload.routes import router as upload_router
 
 
 @asynccontextmanager

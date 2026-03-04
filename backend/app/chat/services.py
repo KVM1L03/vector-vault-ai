@@ -1,19 +1,16 @@
 import json
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
+from fastapi import Request
 
-from app.schemas.chat import QuestionRequest, SourceItem
+from app.chat.schemas import QuestionRequest, SourceItem
+from app.core.cache import get_cached_response, make_cache_key, set_cached_response
 from app.services.rag import get_relevant_chunks, stream_llm_response
-from app.core.cache import make_cache_key, get_cached_response, set_cached_response
-
-router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 CHUNK_SIZE_FOR_CACHE_STREAM = 80
 
 
-def _build_sources(chunks: list, include_full_content: bool) -> list[dict]:
+def build_sources(chunks: list, include_full_content: bool) -> list[dict]:
     sources = []
     for row in chunks[:3]:
         meta = row.get("metadata") or {}
@@ -30,7 +27,7 @@ def _build_sources(chunks: list, include_full_content: bool) -> list[dict]:
     return sources
 
 
-async def generate_chat_stream(req: QuestionRequest, request: Request) -> AsyncGenerator[str, None]:
+async def stream_chat_response(req: QuestionRequest, request: Request) -> AsyncGenerator[str, None]:
     try:
         cache_key = make_cache_key(
             req.query, req.filename, req.top_k, req.include_full_content
@@ -46,7 +43,7 @@ async def generate_chat_stream(req: QuestionRequest, request: Request) -> AsyncG
             return
 
         chunks = await get_relevant_chunks(req.query, top_k=req.top_k, filename=req.filename)
-        sources = _build_sources(chunks, req.include_full_content)
+        sources = build_sources(chunks, req.include_full_content)
         yield f'2:{json.dumps([{"sources": sources}])}\n'
 
         answer_parts: list[str] = []
@@ -62,11 +59,3 @@ async def generate_chat_stream(req: QuestionRequest, request: Request) -> AsyncG
 
     except Exception as e:
         yield f'3:{json.dumps(str(e))}\n'
-
-
-@router.post("/ask")
-async def ask_question(req: QuestionRequest, request: Request):
-    return StreamingResponse(
-        generate_chat_stream(req, request),
-        media_type="text/plain"
-    )
