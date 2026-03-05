@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from app.core.clients import close_redis, get_redis
@@ -29,8 +30,17 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Vector Vault AI",
     version="1.0.0",
-    lifespan=lifespan  
+    lifespan=lifespan
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/")
 async def root():
@@ -39,6 +49,12 @@ async def root():
         "version": "1.0.0",
         "docs_url": "/docs",
     }
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
 
 app.include_router(upload_router)
 app.include_router(chat_router)
