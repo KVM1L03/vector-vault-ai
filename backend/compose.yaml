@@ -7,6 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - PORT=8000
       - REDIS_URL=${REDIS_URL:-redis://redis_cache:6379/0}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SUPABASE_URL=${SUPABASE_URL}
