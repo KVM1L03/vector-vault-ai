@@ -147,9 +147,9 @@ export default function ChatWithPDFPage() {
   const displayError = error ?? (chatError?.message ?? null);
 
   return (
-    <div className="flex h-screen w-full bg-stone-50 font-sans text-stone-800">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-stone-50 font-sans text-stone-800 lg:flex-row">
       {/* Left: PDF upload + preview */}
-      <div className="flex w-1/2 flex-col border-r border-stone-200 bg-white shadow-sm">
+      <div className="flex h-[45vh] min-h-[200px] w-full shrink-0 flex-col overflow-hidden border-r border-stone-200 bg-white shadow-sm lg:h-full lg:min-h-0 lg:w-1/2">
         {uploadedFile && pdfPreviewUrl ? (
           <>
             <div className="flex shrink-0 items-center justify-between gap-2 border-b border-stone-200 bg-stone-50/80 px-4 py-3">
@@ -223,7 +223,7 @@ export default function ChatWithPDFPage() {
       </div>
 
       {/* Right: Chat */}
-      <div className="flex w-1/2 flex-col bg-stone-50/50">
+      <div className="flex min-h-0 flex-1 flex-col bg-stone-50/50 lg:w-1/2">
         <div className="flex flex-1 flex-col overflow-hidden rounded-l-2xl border border-stone-200 border-r-0 bg-white shadow-lg">
           <div className="flex-1 overflow-y-auto p-6">
             {messages.length === 0 && (

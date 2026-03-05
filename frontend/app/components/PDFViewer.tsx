@@ -31,6 +31,8 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(800);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -106,6 +108,17 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
   }, [url]);
 
   useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setContainerWidth(el.clientWidth);
+    });
+    ro.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [loading, error]);
+
+  useEffect(() => {
     if (!pdfDoc || !containerRef.current) return;
     const canvas = containerRef.current.querySelector("canvas");
     if (!canvas) return;
@@ -116,7 +129,8 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
     let cancelled = false;
     pdfDoc.getPage(currentPage).then((page) => {
       if (cancelled) return;
-      const scale = 1.5;
+      const defaultViewport = page.getViewport({ scale: 1 });
+      const scale = Math.min(2, containerWidth / defaultViewport.width);
       const viewport = page.getViewport({ scale });
       canvas.width = viewport.width;
       canvas.height = viewport.height;
@@ -126,7 +140,7 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
     return () => {
       cancelled = true;
     };
-  }, [pdfDoc, currentPage]);
+  }, [pdfDoc, currentPage, containerWidth]);
 
   if (loading) {
     return (
@@ -167,8 +181,8 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
           Next
         </button>
       </div>
-      <div className="flex-1 overflow-auto">
-        <div ref={containerRef} className="flex justify-center">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto">
+        <div ref={containerRef} className="flex justify-start">
           <canvas />
         </div>
       </div>
