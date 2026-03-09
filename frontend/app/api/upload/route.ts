@@ -1,11 +1,8 @@
 import { NextRequest } from "next/server";
+import { safeParseJson } from "@/lib/safe-json";
 
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8000";
 
-/**
- * Proxies PDF upload to FastAPI POST /api/v1/upload
- * Backend returns { filename, chunks_count, message } – response is passed through.
- */
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -26,7 +23,13 @@ export async function POST(req: NextRequest) {
       body: fd,
     });
 
-    const data = await res.json();
+    const data = await safeParseJson<{
+      filename?: string;
+      chunks_count?: number;
+      message?: string;
+      error?: string;
+    }>(res, { error: "Upload failed" });
+
     if (!res.ok) {
       return Response.json(data, { status: res.status });
     }

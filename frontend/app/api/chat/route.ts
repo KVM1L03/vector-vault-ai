@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { safeParseJson } from "@/lib/safe-json";
 
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8000";
 
@@ -113,7 +114,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
+      const errData = await safeParseJson<{
+        detail?: unknown;
+        error?: string;
+      }>(res, { error: "Request failed" });
       return Response.json(
         errData.detail ?? errData.error ?? "Request failed",
         { status: res.status }

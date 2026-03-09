@@ -127,6 +127,8 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
     if (!ctx) return;
 
     let cancelled = false;
+    let renderTask: { cancel: () => void } | null = null;
+
     pdfDoc.getPage(currentPage).then((page) => {
       if (cancelled) return;
       const defaultViewport = page.getViewport({ scale: 1 });
@@ -134,11 +136,18 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
       const viewport = page.getViewport({ scale });
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      page.render({ canvas, canvasContext: ctx, viewport });
+      const task = page.render({ canvas, canvasContext: ctx, viewport });
+      renderTask = task;
+      Promise.resolve(task).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/rendering cancelled|cancelled/i.test(msg)) return;
+        console.error("PDF render error:", err);
+      });
     });
 
     return () => {
       cancelled = true;
+      renderTask?.cancel();
     };
   }, [pdfDoc, currentPage, containerWidth]);
 
