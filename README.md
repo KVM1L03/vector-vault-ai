@@ -5,41 +5,61 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://cloud.google.com/)
 
-> **An intelligent, context-aware document assistant.** Upload any PDF and start a conversation with your data instantly using advanced RAG (Retrieval-Augmented Generation) pipelines.
+> **An intelligent, Enterprise-grade document assistant.** Upload any PDF and start a conversation with your data instantly using an advanced, asynchronous RAG (Retrieval-Augmented Generation) pipeline.
 
-![RAG_DEMO(1)](https://github.com/user-attachments/assets/1205422d-0ef0-41ff-b9f9-57a04a3ae76e)
+🔴 **Live Demo:** [vector-vault-ai.vercel.app](https://vector-vault-ai.vercel.app/)
 
-## 🚀 Features
-* **Instant Document Processing:** Upload PDFs and automatically extract text chunks directly into vector storage via the backend (no files stored permanently).
+![vector-vault](https://github.com/user-attachments/assets/d8380b6d-92eb-40ab-8bd1-8df553e88aab)
+
+---
+
+## 🚀 Key Features
+
+* **Real-time Streaming (Vercel AI SDK):** Experience ChatGPT-like typing speeds. The FastAPI backend streams NDJSON directly to the Next.js client, ensuring a blazing-fast Time-To-First-Token (TTFT).
+* **Semantic Caching:** Integrates an asynchronous Redis cache layer to store frequent exact-match queries, bypassing the LLM entirely to reduce API costs and latency.
 * **Contextual Chat & Traceability:** Ask questions and get precise answers based *only* on the document's content.
-* **Interactive PDF Viewer:** Built-in side-by-side PDF rendering with "Go to source" buttons that instantly jump to the exact document fragment referenced by the AI.
-* **Low Latency Responses:** Optimized vector search using cosine similarity for lightning-fast context retrieval.
-* **Microservices Architecture:** Clean separation of concerns with a blazing-fast Next.js UI and a robust FastAPI/Python AI engine.
+* **Interactive PDF Viewer:** Built-in side-by-side PDF rendering with "Go to source" badges that instantly jump to the exact document fragment referenced by the AI.
+* **Microservices Architecture (BFF):** Clean separation of concerns. Next.js acts as a Backend-For-Frontend proxying secure requests to an isolated, serverless Python engine.
+
+---
 
 ## 🏗️ System Architecture (RAG Pipeline)
 
-The application is split into two main services: a frontend client and an AI backend API.
-1. **Ingestion:** User uploads a PDF via the frontend. The file is streamed to the backend where it is parsed and split into overlapping logical chunks.
-2. **Embedding:** Each chunk is passed through an embedding model (e.g., `text-embedding-3-small`) to generate high-dimensional vector representations.
-3. **Storage:** Vectors and metadata are stored in a Vector Database (Supabase `pgvector`).
-4. **Retrieval:** User queries are embedded, and a similarity search computes the nearest neighbors using cosine similarity: 
-   `similarity = cos(θ) = (A · B) / (||A|| * ||B||)`
-5. **Generation & UI Mapping:** The retrieved context + the user's prompt are sent to the LLM (e.g., GPT-4o-mini) to generate a grounded response. The UI maps the retrieved chunks to the internal PDF viewer for easy verification.
+The application is deployed as a distributed system: Next.js on **Vercel** and FastAPI on **Google Cloud Run**.
+
+
+
+1.  **Ingestion:** User uploads a PDF. The file is parsed, OCR'd if necessary, and split into overlapping logical chunks using LangChain.
+2.  **Embedding:** Chunks pass through `text-embedding-3-small` to generate high-dimensional vectors.
+3.  **Vector Database:** Vectors and metadata are stored in Supabase (`pgvector`).
+4.  **Retrieval (Hybrid):** User queries are embedded, and the system computes nearest neighbors using cosine similarity:
+    $$\text{similarity} = \cos(\theta) = \frac{A \cdot B}{\|A\| \|B\|}$$
+5.  **Generation & Streaming:** The retrieved context + prompt are sent to GPT-4o-mini. The response is streamed asynchronously via Server-Sent Events (SSE) back to the UI.
+
+---
 
 ## 🛠️ Tech Stack
-* **Frontend:** Next.js 16 (App Router), React, TypeScript, Tailwind CSS
-* **Backend & AI:** FastAPI, Python 3.12, LangChain, OpenAI API *(Details in `backend/README.md`)*
-* **Database & Vector Store:** Supabase (PostgreSQL + `pgvector`)
 
-## 💻 Getting Started
+* **Frontend:** Next.js 16 (App Router), React, TypeScript, Tailwind CSS, `ai/react` (Vercel SDK)
+* **Backend:** Python 3.12, FastAPI, Pydantic V2, LangChain, OpenAI Async API
+* **Database & Cache:** Supabase (PostgreSQL + `pgvector`), Redis (Upstash / Local Docker)
+* **Infrastructure:** Docker, Google Cloud Run (Serverless), Vercel
 
-The project is divided into frontend and backend applications that need to be run separately.
+---
+
+## 💻 Getting Started (Local Development)
+
+The project is structured as a monorepo. We use Docker Compose to simplify the backend environment setup.
 
 ### Prerequisites
-* **Node.js (v18+)** for the frontend.
-* **Python 3.12+** for the backend *(details in `backend/README.md`)*.
-* **API Keys:** You will need an OpenAI API key and Supabase credentials (URL + Service Role Key).
+* **Node.js (v18+)**
+* **Docker & Docker Compose**
+* **API Keys:** OpenAI API key and Supabase credentials.
+
+---
 
 ### Installation
 
