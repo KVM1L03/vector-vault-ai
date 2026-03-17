@@ -16,13 +16,13 @@ async def upload_file(
 ) -> UploadResponse:
     """Accept PDF file, process and store in vector database."""
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(400, "Only PDF files are allowed")
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
     contents = await file.read()
 
     try:
         result = await asyncio.to_thread(process_document, contents, file.filename)
     except ValueError as e:
-        raise HTTPException(400, str(e)) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     return result

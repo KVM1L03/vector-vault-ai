@@ -28,7 +28,7 @@ CONTEXT:
 """
 
 async def get_relevant_chunks(query: str, top_k: int = 5, filename: str | None = None) -> list[dict]:
-    """Asynchroniczne pobieranie wektorów z pgvector."""
+    """Fetch relevant chunks from pgvector asynchronously."""
     embeddings = get_embeddings()
     supabase = get_supabase()
     
@@ -50,7 +50,7 @@ async def get_relevant_chunks(query: str, top_k: int = 5, filename: str | None =
 
 
 def build_context(chunks: list[dict]) -> str:
-    """Format retrieved chunks as context string. (Zostaje synchroniczne - to tylko operacje na CPU)"""
+    """Format retrieved chunks as context string. (Synchronous - CPU-only operations)"""
     parts = []
     for i, row in enumerate(chunks, 1):
         content = row.get("content", "")
@@ -61,7 +61,7 @@ def build_context(chunks: list[dict]) -> str:
 
 
 async def stream_llm_response(query: str, chunks: list[dict]) -> AsyncGenerator[str, None]:
-    """Asynchroniczny generator strumieniujący tokeny z LLM."""
+    """Async generator streaming tokens from the LLM."""
     if not chunks:
         yield "No relevant documents found. Please upload documents first."
         return

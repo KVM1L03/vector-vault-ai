@@ -77,6 +77,7 @@ Create a `.env` file in the `backend` directory:
 | `SUPABASE_URL` | yes | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | yes | Service role key (secret) |
 | `REDIS_URL` | no | Defaults to `redis://localhost:6379/0` |
+| `CORS_ORIGINS` | no | Comma-separated origins (default: `https://vector-vault-ai.vercel.app`) |
 
 Run the server:
 
