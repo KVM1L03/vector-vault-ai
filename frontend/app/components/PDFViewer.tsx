@@ -84,8 +84,6 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     pdfjsLib
       .getDocument({ url })

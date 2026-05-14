@@ -4,6 +4,7 @@
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+[![CI](https://github.com/KVM1L03/vector-vault-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/KVM1L03/vector-vault-ai/actions/workflows/ci.yml)
 
 > Upload a PDF, embed chunks into **Supabase pgvector**, and chat with your document through a **streaming RAG** pipeline — Next.js UI, FastAPI core, Redis-backed rate limits and response cache.
 
@@ -46,7 +47,7 @@ Exceeded limits → **429** with a human-readable retry hint. Implementation: `b
 6. [Quick start](#quick-start)
 7. [Configuration](#configuration)
 8. [Step-by-step setup](#step-by-step-setup)
-9. [Local verification](#local-verification)
+9. [Testing & CI](#testing--ci)
 10. [Project structure](#project-structure)
 11. [Architectural invariants](#architectural-invariants)
 
@@ -259,15 +260,30 @@ Follow [Quick start](#quick-start). Confirm `POST /api/v1/upload` with a small P
 
 ---
 
-## Local verification
+## Testing & CI
 
-There is **no** GitHub Actions workflow or pytest suite in this repository today. Before pushing, a minimal manual matrix:
+### GitHub Actions
+
+On every **push** and **pull request** to `main`, [.github/workflows/ci.yml](./.github/workflows/ci.yml) runs three parallel jobs:
+
+| Job | Validates |
+| --- | --- |
+| **backend** | Python 3.12, `pip install -r requirements.txt`, `compileall` on `app/` + `main.py`, smoke-import of `main:app` |
+| **frontend** | `npm ci`, ESLint, `next build` (with `API_BASE_URL` placeholder for compile-time env) |
+| **docker-backend** | `docker build -f backend/Dockerfile backend` — same artifact shape as Google Cloud Run |
+
+There is no pytest suite yet; expanding **backend** with unit tests against pure helpers (e.g. chunking, cache-key derivation) would be the natural next step.
+
+### Continuous deployment
+
+Deploy is **not** automated in YAML: connect **Vercel** (or similar) to this repo for the frontend, and ship the backend container from Cloud Run / Artifact Registry using your own OIDC or service-account secrets when you want push-to-prod. The Docker CI job exists specifically so merges cannot regress an image that no longer builds.
+
+### Local commands (parity with CI)
 
 ```bash
-cd backend && python -m pip install -r requirements.txt
-# optional: ruff/mypy if you add them later
+cd backend && python3.12 -m pip install -r requirements.txt && python -m compileall -q app main.py && python -c "from main import app"
 
-cd ../frontend && npm run lint
+cd ../frontend && npm ci && npm run lint && npm run build
 ```
 
 ---

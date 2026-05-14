@@ -173,6 +173,7 @@ export default function ChatWithPDFPage() {
             </div>
             <div className="flex-1 overflow-hidden p-3">
               <PDFViewer
+                key={pdfPreviewUrl}
                 ref={pdfViewerRef}
                 url={pdfPreviewUrl}
                 className="h-full w-full rounded-xl border border-stone-200 shadow-inner"
