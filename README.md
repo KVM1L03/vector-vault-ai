@@ -329,9 +329,3 @@ Deeper backend layout: [`backend/README.md`](./backend/README.md).
 3. **Service role on the API.** Only the backend uses `SUPABASE_SERVICE_KEY`; never expose it to Next.js client bundles.
 4. **Redis is part of the hot path** for rate limiting and optional chat cache — absence manifests as **500** on chat/upload, not as `/health` failure.
 5. **Streaming contract.** Backend NDJSON prefixes (`0`, `2`, `3`) must stay aligned with `transformBackendToUIMessageStream` in `frontend/app/api/chat/route.ts`.
-
----
-
-## Acknowledgements
-
-Layout and documentation tone inspired by **[OmniAccountant](https://github.com/KVM1L03/OmniAccountant)** — adapted here for a smaller RAG surface area (no durable workflow engine, no separate observability stack).
