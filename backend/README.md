@@ -47,6 +47,74 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
+
+-- Semantic chat response cache (L2 — pgvector similarity on query embeddings)
+CREATE TABLE IF NOT EXISTS chat_response_cache (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  query_text text NOT NULL,
+  query_embedding vector(1536) NOT NULL,
+  answer text NOT NULL,
+  sources jsonb NOT NULL DEFAULT '[]',
+  filename text,
+  top_k int NOT NULL,
+  include_full_content boolean NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS chat_response_cache_embedding_idx
+  ON chat_response_cache USING hnsw (query_embedding vector_cosine_ops);
+
+CREATE INDEX IF NOT EXISTS chat_response_cache_expires_idx
+  ON chat_response_cache (expires_at);
+
+CREATE OR REPLACE FUNCTION match_chat_cache(
+  query_embedding vector(1536),
+  filter_filename text DEFAULT NULL,
+  filter_top_k int DEFAULT 5,
+  filter_include_full_content boolean DEFAULT false,
+  match_threshold float DEFAULT 0.92,
+  match_count int DEFAULT 1
+)
+RETURNS TABLE (
+  id uuid,
+  query_text text,
+  answer text,
+  sources jsonb,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    c.id,
+    c.query_text,
+    c.answer,
+    c.sources,
+    (1 - (c.query_embedding <=> match_chat_cache.query_embedding))::float AS similarity
+  FROM chat_response_cache c
+  WHERE c.expires_at > now()
+    AND c.top_k = filter_top_k
+    AND c.include_full_content = filter_include_full_content
+    AND (
+      (filter_filename IS NULL AND c.filename IS NULL)
+      OR (filter_filename IS NOT NULL AND c.filename = filter_filename)
+    )
+    AND (1 - (c.query_embedding <=> match_chat_cache.query_embedding)) >= match_threshold
+  ORDER BY c.query_embedding <=> match_chat_cache.query_embedding
+  LIMIT match_count;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION invalidate_chat_cache(filter_filename text)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  DELETE FROM chat_response_cache WHERE filename = filter_filename;
+END;
+$$;
 ```
 
 ---
@@ -77,6 +145,9 @@ Create a `.env` file in the `backend` directory:
 | `SUPABASE_URL` | yes | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | yes | Service role key (secret) |
 | `REDIS_URL` | no | Defaults to `redis://localhost:6379/0` |
+| `SEMANTIC_CACHE_ENABLED` | no | Enable L2 semantic cache in Supabase (default: `true`) |
+| `SEMANTIC_CACHE_THRESHOLD` | no | Cosine similarity threshold for cache hits (default: `0.92`) |
+| `SEMANTIC_CACHE_TTL_SECONDS` | no | L2 cache entry TTL in seconds (default: `600`) |
 | `CORS_ORIGINS` | no | Comma-separated origins (default: `https://vector-vault-ai.vercel.app`) |
 
 Run the server:
@@ -111,7 +182,9 @@ backend/
 └── app/
     ├── core/
     │   ├── __init__.py
-    │   ├── cache.py        # Redis cache for chat responses
+    │   ├── cache.py        # Redis L1 exact-match cache for chat responses
+    │   ├── config.py       # Semantic cache env settings
+    │   ├── semantic_cache.py  # Supabase L2 semantic cache (pgvector)
     │   ├── clients.py      # embeddings, Supabase, LLM, text splitter, Redis
     │   └── rate_limit.py   # rate limiting (upload, ask)
     │

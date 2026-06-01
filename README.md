@@ -68,7 +68,7 @@ Teams accumulate knowledge in long PDFs — manuals, specs, policies. Keyword se
 | **Retrieve** | RPC **`match_documents`** — cosine distance via pgvector **HNSW**, optional `filter_filename` for single-document sessions. |
 | **Answer** | **`gpt-4o-mini`** streams tokens; prompt constrains answers to retrieved context (plus formatting rules for math / language). |
 
-Cached **exact** question repeats (same normalized query, filename scope, `top_k`, `include_full_content`) skip the LLM for ~10 minutes — see `backend/app/core/cache.py`.
+Two-tier chat cache: **Redis L1** (exact query match, no embedding) and **Supabase L2** (semantic similarity on query embeddings). Hits skip RAG + LLM for ~10 minutes — see `backend/app/core/cache.py` and `backend/app/core/semantic_cache.py`.
 
 ---
 
@@ -108,7 +108,8 @@ graph TB
 | FastAPI | REST + streaming RAG | `backend/main.py`, `backend/app/` |
 | OpenAI | Embeddings + chat completions | `backend/app/core/clients.py` |
 | Supabase | Vector storage + `match_documents` RPC | SQL in [`backend/README.md`](./backend/README.md) |
-| Redis | Rate limits + chat response cache | `backend/app/core/rate_limit.py`, `backend/app/core/cache.py` |
+| Redis | Rate limits + L1 exact-match chat cache | `backend/app/core/rate_limit.py`, `backend/app/core/cache.py` |
+| Supabase cache | L2 semantic chat response cache (pgvector) | SQL in [`backend/README.md`](./backend/README.md), `backend/app/core/semantic_cache.py` |
 
 ### Tech stack
 
@@ -119,7 +120,7 @@ graph TB
 | **PDF** | PyMuPDF | Fast text extraction from PDF streams — no extra OCR service in this repo. |
 | **Chunking / LLM** | LangChain text splitters · LangChain OpenAI wrappers | Thin abstraction over OpenAI; shared client singletons. |
 | **Vectors** | Supabase + pgvector + HNSW index | Managed Postgres, RPC for parameterized similarity search. |
-| **Cache / limits** | Redis (async client) | Cross-request rate limiting and deterministic cache keys (SHA-256 over query dimensions). |
+| **Cache / limits** | Redis (L1 exact) + Supabase pgvector (L2 semantic) | Rate limiting in Redis; exact SHA-256 keys in Redis; similar queries matched via `match_chat_cache` RPC. |
 | **Deploy** | Vercel (frontend) · Cloud Run–friendly container (backend) | Stateless API + external Redis/Supabase — see `backend/Dockerfile`. |
 
 ### Architectural highlights
@@ -155,7 +156,7 @@ sequenceDiagram
     User->>Next: POST /api/chat (query + filename)
     Next->>API: POST /api/v1/ask (streaming)
     API->>API: Rate limit (Redis)
-    API->>API: Cache lookup (optional hit → synthetic stream)
+    API->>API: L1 exact cache (Redis) or L2 semantic cache (Supabase)
     API->>OAI: embed_query
     API->>SB: rpc(match_documents)
     OAI-->>API: answer tokens (stream)
@@ -228,6 +229,9 @@ App: http://localhost:3000
 | `SUPABASE_URL` | yes | Supabase project URL. |
 | `SUPABASE_SERVICE_KEY` | yes | Service role key (server-side only). |
 | `REDIS_URL` | strongly recommended | Defaults to `redis://localhost:6379/0` — **wrong** for remote/container hosts without local Redis. |
+| `SEMANTIC_CACHE_ENABLED` | no | Enable Supabase L2 semantic cache (default: `true`). |
+| `SEMANTIC_CACHE_THRESHOLD` | no | Cosine similarity threshold for L2 hits (default: `0.92`). |
+| `SEMANTIC_CACHE_TTL_SECONDS` | no | L2 cache TTL in seconds (default: `600`). |
 | `CORS_ORIGINS` | no | Comma-separated allowed origins (default: `https://vector-vault-ai.vercel.app`). |
 | `PORT` | no | Listen port (Cloud Run injects this; local `main.py` defaults to 8000). |
 
@@ -247,7 +251,7 @@ Set this in **Vercel** / hosting to your deployed API (e.g. Cloud Run URL).
 
 ### 1. Supabase schema
 
-Run the SQL block in **[`backend/README.md`](./backend/README.md)** (extension, `documents` table 1536-d vectors, HNSW index, **`match_documents`** RPC). Without this, inserts and retrieval fail at runtime.
+Run the SQL block in **[`backend/README.md`](./backend/README.md)** (extension, `documents` table, **`match_documents`** RPC, plus `chat_response_cache` + **`match_chat_cache`** for semantic caching). Without this, inserts, retrieval, and semantic cache fail at runtime.
 
 ### 2. Redis
 
@@ -272,7 +276,7 @@ On every **push** and **pull request** to `main`, [.github/workflows/ci.yml](./.
 | **frontend** | `npm ci`, ESLint, `next build` (with `API_BASE_URL` placeholder for compile-time env) |
 | **docker-backend** | `docker build -f backend/Dockerfile backend` — same artifact shape as Google Cloud Run |
 
-There is no pytest suite yet; expanding **backend** with unit tests against pure helpers (e.g. chunking, cache-key derivation) would be the natural next step.
+There is no pytest suite in CI yet; run `python -m unittest discover -s tests` from `backend/` for cache helper tests. Expanding **backend** with more unit tests against pure helpers would be the natural next step.
 
 ### Continuous deployment
 
@@ -300,7 +304,9 @@ cd ../frontend && npm ci && npm run lint && npm run build
 │   └── app/
 │       ├── core/
 │       │   ├── clients.py      # OpenAI, Supabase, splitter, Redis singletons
-│       │   ├── cache.py        # Chat cache (Redis JSON, TTL)
+│       │   ├── cache.py        # L1 exact-match chat cache (Redis JSON, TTL)
+│       │   ├── semantic_cache.py  # L2 semantic chat cache (Supabase pgvector)
+│       │   ├── config.py       # Semantic cache env settings
 │       │   └── rate_limit.py   # Redis Lua rate limiter
 │       ├── chat/               # POST /api/v1/ask — streaming
 │       ├── upload/             # POST /api/v1/upload — PDF → vectors

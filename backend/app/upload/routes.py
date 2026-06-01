@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.upload.schemas import UploadResponse
 from app.upload.services import process_document
+from app.upload.cache_invalidation import invalidate_caches_for_filename
 from app.core.rate_limit import rate_limit_upload
 
 router = APIRouter(prefix="/api/v1", tags=["upload"])
@@ -24,5 +25,7 @@ async def upload_file(
         result = await asyncio.to_thread(process_document, contents, file.filename)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+    await invalidate_caches_for_filename(file.filename)
 
     return result

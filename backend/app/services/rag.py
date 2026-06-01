@@ -27,13 +27,19 @@ CONTEXT:
 {context}
 """
 
-async def get_relevant_chunks(query: str, top_k: int = 5, filename: str | None = None) -> list[dict]:
+async def get_relevant_chunks(
+    query: str,
+    top_k: int = 5,
+    filename: str | None = None,
+    query_vector: list[float] | None = None,
+) -> list[dict]:
     """Fetch relevant chunks from pgvector asynchronously."""
     embeddings = get_embeddings()
     supabase = get_supabase()
-    
-    query_vector = await embeddings.aembed_query(query)
-    
+
+    if query_vector is None:
+        query_vector = await embeddings.aembed_query(query)
+
     params: dict = {
         "query_embedding": query_vector,
         "match_count": top_k,
