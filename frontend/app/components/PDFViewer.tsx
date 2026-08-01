@@ -1,6 +1,7 @@
 "use client";
 
 import * as pdfjsLib from "pdfjs-dist";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -167,29 +168,33 @@ const PDFViewer = forwardRef<PDFViewerHandle, Props>(function PDFViewer(
 
   return (
     <div className={`flex flex-col overflow-hidden ${className}`}>
-      <div className="mb-2 flex shrink-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          disabled={currentPage <= 1}
-          className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
-        >
-          Prev
-        </button>
-        <span className="text-sm text-stone-600">
-          Page {currentPage} / {numPages}
-        </span>
-        <button
-          type="button"
-          onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
-          disabled={currentPage >= numPages}
-          className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
-        >
-          Next
-        </button>
+      <div className="flex shrink-0 justify-center border-b border-black/5 bg-gradient-to-b from-white/60 to-white/0 px-4 py-2.5 backdrop-blur-md">
+        <div className="flex items-center gap-0.5 rounded-full border border-white/70 bg-white/55 p-[3px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_1px_3px_rgba(0,0,0,0.05)] backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            aria-label="Previous page"
+            className="flex h-[26px] w-[30px] items-center justify-center rounded-full text-[#1C1C1E] disabled:opacity-30"
+          >
+            <ChevronLeft className="h-4 w-4" strokeWidth={1.8} />
+          </button>
+          <span className="rounded-full bg-gradient-to-b from-white to-[#faf8f5] px-3.5 py-1 text-[12.5px] font-semibold text-[#1C1C1E] shadow-[0_1px_3px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)]">
+            Page {currentPage} of {numPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
+            disabled={currentPage >= numPages}
+            aria-label="Next page"
+            className="flex h-[26px] w-[30px] items-center justify-center rounded-full text-[#1C1C1E] disabled:opacity-30"
+          >
+            <ChevronRight className="h-4 w-4" strokeWidth={1.8} />
+          </button>
+        </div>
       </div>
-      <div ref={scrollContainerRef} className="flex-1 overflow-auto">
-        <div ref={containerRef} className="flex justify-start">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto px-6 py-5">
+        <div ref={containerRef} className="flex justify-center">
           <canvas />
         </div>
       </div>
