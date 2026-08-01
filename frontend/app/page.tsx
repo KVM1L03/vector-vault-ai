@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileUp, Square } from "lucide-react";
+import { ArrowUp, FileUp, Square } from "lucide-react";
 import dynamic from "next/dynamic";
 import { ChatMessage } from "./components/ChatMessage";
 import { useChat } from "@ai-sdk/react";
@@ -147,13 +147,19 @@ export default function ChatWithPDFPage() {
   const displayError = error ?? (chatError?.message ?? null);
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-stone-50 font-sans text-stone-800 lg:flex-row">
+    <div
+      className="flex h-screen w-full flex-col overflow-hidden font-sans text-[#1C1C1E] lg:flex-row"
+      style={{
+        background:
+          "radial-gradient(circle at 15% 0%, #FFF6EA 0%, #FAF6F0 35%, #F3ECE1 100%)",
+      }}
+    >
       {/* Left: PDF upload + preview */}
-      <div className="flex h-[45vh] min-h-[200px] w-full shrink-0 flex-col overflow-hidden border-r border-stone-200 bg-white shadow-sm lg:h-full lg:min-h-0 lg:w-1/2">
+      <div className="flex h-[45vh] min-h-[200px] w-full shrink-0 flex-col gap-4 p-4 lg:h-full lg:min-h-0 lg:w-1/2 lg:p-6">
         {uploadedFile && pdfPreviewUrl ? (
           <>
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-stone-200 bg-stone-50/80 px-4 py-3">
-              <p className="truncate text-sm font-medium text-stone-800">
+            <div className="flex shrink-0 items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-sm font-medium text-[#1C1C1E]">
                 {activeFilename ?? uploadedFile.name}
               </p>
               <input
@@ -166,17 +172,20 @@ export default function ChatWithPDFPage() {
               />
               <label
                 htmlFor="pdf-upload"
-                className="shrink-0 cursor-pointer rounded-lg border border-orange-200 bg-white px-3 py-1.5 text-xs font-medium text-orange-700 shadow-sm transition-colors hover:bg-orange-50 hover:border-orange-300 disabled:opacity-50"
+                className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-white/60 px-4 py-2 text-[13.5px] font-semibold text-[#8A4A16] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{
+                  background: "linear-gradient(180deg, #FDE7CB, #FBD5A3)",
+                }}
               >
                 {uploading ? "Uploading..." : "Change PDF"}
               </label>
             </div>
-            <div className="flex-1 overflow-hidden p-3">
+            <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-white/70 bg-gradient-to-b from-white to-[#fdfcfa] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(0,0,0,0.05),0_30px_60px_-24px_rgba(80,55,25,0.28)]">
               <PDFViewer
                 key={pdfPreviewUrl}
                 ref={pdfViewerRef}
                 url={pdfPreviewUrl}
-                className="h-full w-full rounded-xl border border-stone-200 shadow-inner"
+                className="h-full w-full"
               />
             </div>
           </>
@@ -186,20 +195,20 @@ export default function ChatWithPDFPage() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={`
-              flex flex-1 flex-col items-center justify-center gap-5 rounded-2xl border-2 border-dashed
-              m-8 bg-stone-50/80 p-12 transition-all duration-200
-              ${isDragging ? "border-orange-400 bg-orange-50/70 shadow-inner" : "border-stone-200 hover:border-orange-200 hover:bg-orange-50/30"}
+              flex flex-1 flex-col items-center justify-center gap-5 rounded-[22px] border-2 border-dashed
+              p-12 transition-all duration-200
+              ${isDragging ? "border-orange-400 bg-orange-50/60 shadow-inner" : "border-orange-200/60 bg-white/40 hover:border-orange-300 hover:bg-orange-50/30"}
             `}
           >
             <div
-              className={`rounded-full p-4 transition-colors ${isDragging ? "bg-orange-100" : "bg-stone-100"}`}
+              className={`rounded-full p-4 transition-colors ${isDragging ? "bg-orange-100" : "bg-white/70"}`}
             >
               <FileUp
-                className={`h-12 w-12 ${isDragging ? "text-orange-600" : "text-stone-500"}`}
+                className={`h-12 w-12 ${isDragging ? "text-orange-600" : "text-[#A8A29A]"}`}
                 strokeWidth={1.5}
               />
             </div>
-            <p className="text-center text-lg font-medium text-stone-800">
+            <p className="text-center text-lg font-medium text-[#1C1C1E]">
               Drop your PDF here or click to browse
             </p>
             {uploadError && (
@@ -215,7 +224,10 @@ export default function ChatWithPDFPage() {
             />
             <label
               htmlFor="pdf-upload"
-              className="cursor-pointer rounded-xl border border-orange-200 bg-white px-5 py-2.5 text-sm font-medium text-orange-700 shadow-sm transition-colors hover:bg-orange-50 hover:border-orange-300 disabled:opacity-50"
+              className="cursor-pointer rounded-full border border-white/60 px-5 py-2.5 text-sm font-semibold text-[#8A4A16] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{
+                background: "linear-gradient(180deg, #FDE7CB, #FBD5A3)",
+              }}
             >
               {uploading ? "Uploading..." : "Choose PDF"}
             </label>
@@ -224,17 +236,22 @@ export default function ChatWithPDFPage() {
       </div>
 
       {/* Right: Chat */}
-      <div className="flex min-h-0 flex-1 flex-col bg-stone-50/50 lg:w-1/2">
-        <div className="flex flex-1 flex-col overflow-hidden rounded-l-2xl border border-stone-200 border-r-0 bg-white shadow-lg">
-          <div className="flex-1 overflow-y-auto p-6">
+      <div
+        className="flex min-h-0 flex-1 flex-col border-l border-black/[0.06] lg:w-1/2"
+        style={{
+          background: "linear-gradient(180deg, #FDFBF8, #F6F0E6)",
+        }}
+      >
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-8 py-8">
             {messages.length === 0 && (
-              <div className="flex h-full items-center justify-center text-stone-500">
+              <div className="flex h-full items-center justify-center text-[#8A857A]">
                 <p className="text-center text-sm">
                   Upload a PDF and ask questions.
                 </p>
               </div>
             )}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
               {messages.map((msg) => (
                 <ChatMessage
                   key={msg.id}
@@ -245,12 +262,10 @@ export default function ChatWithPDFPage() {
                 />
               ))}
               {isLoading && (
-                <div className="flex justify-start">
-                  <div className="flex items-center gap-1.5 rounded-2xl bg-orange-50 border border-orange-100 px-4 py-2">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500 [animation-delay:150ms]" />
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500 [animation-delay:300ms]" />
-                  </div>
+                <div className="flex gap-1.5 px-1 py-2">
+                  <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#D7CFC3]" />
+                  <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#D7CFC3] [animation-delay:150ms]" />
+                  <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#D7CFC3] [animation-delay:300ms]" />
                 </div>
               )}
             </div>
@@ -263,13 +278,13 @@ export default function ChatWithPDFPage() {
             </div>
           )}
 
-          <div className="border-t border-stone-200 bg-stone-50/30 p-4">
+          <div className="shrink-0 px-6 pb-6 pt-2">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSubmit(e);
               }}
-              className="flex gap-3"
+              className="flex items-center gap-2 rounded-full border border-white/70 bg-white/65 py-1.5 pl-5 pr-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(0,0,0,0.04),0_16px_32px_-14px_rgba(0,0,0,0.22)] backdrop-blur-2xl"
             >
               <input
                 type="text"
@@ -277,24 +292,29 @@ export default function ChatWithPDFPage() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about your PDF..."
                 disabled={isLoading}
-                className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-stone-800 placeholder-stone-400 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/25 disabled:opacity-60"
+                className="min-w-0 flex-1 bg-transparent text-[15px] text-[#1C1C1E] outline-none placeholder:text-[#A8A29A] disabled:opacity-60"
               />
               {isLoading ? (
                 <button
                   type="button"
                   onClick={() => stop()}
-                  className="flex items-center gap-2 rounded-xl border border-orange-300 bg-white px-6 py-3 font-medium text-orange-700 shadow-sm transition-colors hover:bg-orange-50"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/50 bg-white text-[#8A4A16] shadow-sm transition-opacity hover:opacity-90"
+                  aria-label="Stop generating"
                 >
-                  <Square className="h-4 w-4" />
-                  Stop
+                  <Square className="h-3.5 w-3.5" />
                 </button>
               ) : (
                 <button
                   type="submit"
                   disabled={!input.trim() || !uploadedFile || !activeFilename}
-                  className="rounded-xl bg-orange-500 px-6 py-3 font-medium text-white shadow-md transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-orange-500"
+                  aria-label="Send message"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/50 text-white shadow-[0_2px_8px_rgba(226,130,40,0.45),inset_0_1px_0_rgba(255,255,255,0.5)] transition-opacity disabled:cursor-not-allowed disabled:opacity-55"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 32% 28%, #FFC38A, #F2994A 55%, #E17F2E)",
+                  }}
                 >
-                  Send
+                  <ArrowUp className="h-4 w-4" strokeWidth={2.2} />
                 </button>
               )}
             </form>
