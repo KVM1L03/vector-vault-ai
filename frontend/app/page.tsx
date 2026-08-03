@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, FileUp, Square } from "lucide-react";
 import dynamic from "next/dynamic";
 import { ChatMessage } from "./components/ChatMessage";
+import { DocumentProcessingLoader } from "./components/DocumentProcessingLoader";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
@@ -24,6 +25,7 @@ export default function ChatWithPDFPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [activeFilename, setActiveFilename] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [pendingFilename, setPendingFilename] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
@@ -79,6 +81,7 @@ export default function ChatWithPDFPage() {
 
   const uploadFile = useCallback(async (file: File) => {
     setUploadError(null);
+    setPendingFilename(file.name);
     setUploading(true);
     try {
       const fd = new FormData();
@@ -96,6 +99,7 @@ export default function ChatWithPDFPage() {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
+      setPendingFilename(null);
     }
   }, []);
 
@@ -172,23 +176,39 @@ export default function ChatWithPDFPage() {
               />
               <label
                 htmlFor="pdf-upload"
-                className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-white/60 px-4 py-2 text-[13.5px] font-semibold text-[#8A4A16] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                aria-disabled={uploading}
+                className={`shrink-0 whitespace-nowrap rounded-full border border-white/60 px-4 py-2 text-[13.5px] font-semibold text-[#8A4A16] shadow-sm transition-opacity ${
+                  uploading
+                    ? "pointer-events-none cursor-not-allowed opacity-50"
+                    : "cursor-pointer hover:opacity-90"
+                }`}
                 style={{
                   background: "linear-gradient(180deg, #FDE7CB, #FBD5A3)",
                 }}
               >
-                {uploading ? "Uploading..." : "Change PDF"}
+                {uploading ? "Processing…" : "Change PDF"}
               </label>
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-white/70 bg-gradient-to-b from-white to-[#fdfcfa] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(0,0,0,0.05),0_30px_60px_-24px_rgba(80,55,25,0.28)]">
+            {uploadError && (
+              <p className="shrink-0 text-sm text-red-600">{uploadError}</p>
+            )}
+            <div className="relative min-h-0 flex-1 overflow-hidden rounded-[22px] border border-white/70 bg-gradient-to-b from-white to-[#fdfcfa] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(0,0,0,0.05),0_30px_60px_-24px_rgba(80,55,25,0.28)]">
               <PDFViewer
                 key={pdfPreviewUrl}
                 ref={pdfViewerRef}
                 url={pdfPreviewUrl}
                 className="h-full w-full"
               />
+              {uploading && (
+                <DocumentProcessingLoader
+                  filename={pendingFilename}
+                  variant="overlay"
+                />
+              )}
             </div>
           </>
+        ) : uploading ? (
+          <DocumentProcessingLoader filename={pendingFilename} />
         ) : (
           <div
             onDragOver={handleDragOver}
@@ -224,12 +244,12 @@ export default function ChatWithPDFPage() {
             />
             <label
               htmlFor="pdf-upload"
-              className="cursor-pointer rounded-full border border-white/60 px-5 py-2.5 text-sm font-semibold text-[#8A4A16] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="cursor-pointer rounded-full border border-white/60 px-5 py-2.5 text-sm font-semibold text-[#8A4A16] shadow-sm transition-opacity hover:opacity-90"
               style={{
                 background: "linear-gradient(180deg, #FDE7CB, #FBD5A3)",
               }}
             >
-              {uploading ? "Uploading..." : "Choose PDF"}
+              Choose PDF
             </label>
           </div>
         )}
